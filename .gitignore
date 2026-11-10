@@ -1,0 +1,30 @@
+
+# Node.js / Next.js
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+**/coverage/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# .NET
+**/bin/
+**/obj/
+
+# IDE
+.vs/
+.vscode/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
