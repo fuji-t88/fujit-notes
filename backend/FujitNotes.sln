@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FujitNotes.Domain.Tests", "tests\FujitNotes.Domain.Tests\FujitNotes.Domain.Tests.csproj", "{4A144E48-8859-470E-B1BD-954FEEBDCCFD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FujitNotes.Application.Tests", "tests\FujitNotes.Application.Tests\FujitNotes.Application.Tests.csproj", "{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,6 +89,18 @@ Global
 		{4A144E48-8859-470E-B1BD-954FEEBDCCFD}.Release|x64.Build.0 = Release|Any CPU
 		{4A144E48-8859-470E-B1BD-954FEEBDCCFD}.Release|x86.ActiveCfg = Release|Any CPU
 		{4A144E48-8859-470E-B1BD-954FEEBDCCFD}.Release|x86.Build.0 = Release|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Debug|x64.Build.0 = Debug|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Debug|x86.Build.0 = Debug|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Release|x64.ActiveCfg = Release|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Release|x64.Build.0 = Release|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Release|x86.ActiveCfg = Release|Any CPU
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,5 +111,6 @@ Global
 		{EAC75AE7-EC7F-4641-AFE1-51869553E6F7} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{A5F69606-E278-4DCC-B6E2-B0409E246768} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{4A144E48-8859-470E-B1BD-954FEEBDCCFD} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{07CAC084-FBA2-4E81-B84C-91AC50DB5E2C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
