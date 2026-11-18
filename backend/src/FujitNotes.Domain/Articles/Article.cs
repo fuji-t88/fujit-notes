@@ -5,9 +5,9 @@ public class Article
 {
     public Guid Id { get; private set; }
 
-    public ArticleTitle Title { get; private set; }
+    public ArticleTitle Title { get; private set; } = null!;
 
-    public string Content { get; private set; }
+    public string Content { get; private set; } = string.Empty;
 
     public ArticleStatus Status { get; private set; }
 
@@ -15,6 +15,12 @@ public class Article
 
     public DateTimeOffset? PublishedAt { get; private set; }
 
+    // EF Coreによるデータ復元用
+    private Article()
+    {
+    }
+
+    // 記事を新規作成する
     public Article(string title, string content)
     {
         Id = Guid.NewGuid();
@@ -25,6 +31,7 @@ public class Article
         PublishedAt = null;
     }
 
+    // 記事タイトルを変更する
     public void ChangeTitle(string newTitle)
     {
         if (Status == ArticleStatus.Archived)
@@ -36,6 +43,7 @@ public class Article
         Title = new ArticleTitle(newTitle);
     }
 
+    // 記事を公開する
     public void Publish()
     {
         if (Status == ArticleStatus.Archived)
@@ -60,6 +68,7 @@ public class Article
         PublishedAt = DateTimeOffset.UtcNow;
     }
 
+    // 記事をアーカイブする
     public void Archive()
     {
         if (Status == ArticleStatus.Archived)
