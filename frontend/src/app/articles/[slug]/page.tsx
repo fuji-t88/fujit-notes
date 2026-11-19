@@ -5,39 +5,34 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import {
-  sampleArticles,
-  sampleArticleContents,
-} from "@/features/articles/data/sampleArticles";
+  getPublicArticleById,
+} from "@/features/articles/api/publicArticlesApi";
 
-// Next.js 16ではparamsをPromiseとして受け取る
+import {
+  toArticle,
+} from "@/features/articles/api/articleMapper";
+
 interface ArticlePageProps {
   params: Promise<{
     slug: string;
   }>;
 }
 
-// ビルド時に事前生成する記事URL
-export function generateStaticParams() {
-  return sampleArticles.map((article) => ({
-    slug: article.slug,
-  }));
-}
-
-// 記事ごとのSEO情報
+// 記事ごとのSEO情報を作成する
 export async function generateMetadata({
   params,
 }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const article = sampleArticles.find(
-    (item) => item.slug === slug
-  );
+  const dto = await getPublicArticleById(slug);
 
-  if (!article) {
+  if (!dto) {
     return {
       title: "記事が見つかりません | Fujit Notes",
     };
   }
+
+  const article = toArticle(dto);
 
   return {
     title: `${article.title} | Fujit Notes`,
@@ -45,7 +40,7 @@ export async function generateMetadata({
   };
 }
 
-// ページ本体：Suspenseで非同期処理を囲む
+// ページ本体
 export default function ArticleDetailPage({
   params,
 }: ArticlePageProps) {
@@ -67,27 +62,20 @@ function ArticleLoading() {
   );
 }
 
-// 実際の記事表示処理
+// 記事詳細表示
 async function ArticleContent({
   params,
 }: ArticlePageProps) {
   const { slug } = await params;
 
-  // slugから記事を取得
-  const article = sampleArticles.find(
-    (item) => item.slug === slug
-  );
+  // slugには暫定的に記事Guidが入る
+  const dto = await getPublicArticleById(slug);
 
-  if (!article) {
+  if (!dto) {
     notFound();
   }
 
-  // 記事本文を取得
-  const content = sampleArticleContents[slug];
-
-  if (!content) {
-    notFound();
-  }
+  const article = toArticle(dto);
 
   return (
     <article className="mx-auto max-w-3xl px-6 py-16">
@@ -113,40 +101,26 @@ async function ArticleContent({
           {article.excerpt}
         </p>
 
-        {/* 記事タグ */}
-        <div className="mt-6 flex flex-wrap gap-2">
-          {article.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-orange-50 px-3 py-1 text-sm text-orange-700"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        {/* タグ */}
+        {article.tags.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {article.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-orange-50 px-3 py-1 text-sm text-orange-700"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </header>
 
       {/* 記事本文 */}
-      <section className="mt-10 space-y-6">
-        <h2 className="text-2xl font-bold text-[#292929]">
-          {content.heading}
-        </h2>
-
-        {content.paragraphs.map((paragraph, index) => (
-          <p
-            key={index}
-            className="leading-8 text-gray-700"
-          >
-            {paragraph}
-          </p>
-        ))}
-
-        {/* 技術記事用コードブロック */}
-        {content.code && (
-          <pre className="overflow-x-auto rounded-xl bg-[#292929] p-5 text-sm text-white">
-            <code>{content.code}</code>
-          </pre>
-        )}
+      <section className="mt-10">
+        <div className="whitespace-pre-wrap break-words leading-8 text-gray-700">
+          {dto.content}
+        </div>
       </section>
 
       {/* 記事一覧へ戻る */}

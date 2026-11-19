@@ -1,13 +1,25 @@
 
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { ArticleList } from "@/features/articles/ui/ArticleList";
-import { sampleArticles } from "@/features/articles/data/sampleArticles";
+
+import {
+  getPublicArticles,
+} from "@/features/articles/api/publicArticlesApi";
+
+import {
+  toArticle,
+} from "@/features/articles/api/articleMapper";
+
+import {
+  ArticleList,
+} from "@/features/articles/ui/ArticleList";
 
 export const metadata: Metadata = {
   title: "Articles | Fujit Notes",
   description: "Fujit Notesの記事一覧ページ",
 };
 
+// ページ本体
 export default function ArticlesPage() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16">
@@ -25,11 +37,37 @@ export default function ArticlesPage() {
         </p>
 
         <p className="mt-2 text-sm text-gray-500">
-          現在は開発用のサンプル記事を表示しています。
+          公開済みの記事を表示しています。
         </p>
       </div>
 
-      <ArticleList articles={sampleArticles} />
+      {/* 非同期API通信をSuspenseで囲む */}
+      <Suspense fallback={<ArticleListLoading />}>
+        <PublicArticleList />
+      </Suspense>
     </section>
   );
+}
+
+// API通信中の表示
+function ArticleListLoading() {
+  return (
+    <div
+      role="status"
+      className="rounded-xl border border-orange-100 bg-orange-50 p-6"
+    >
+      <p className="text-sm text-gray-600">
+        記事を読み込んでいます...
+      </p>
+    </div>
+  );
+}
+
+// API通信を行うServer Component
+async function PublicArticleList() {
+  const publicArticles = await getPublicArticles();
+
+  const articles = publicArticles.map(toArticle);
+
+  return <ArticleList articles={articles} />;
 }
