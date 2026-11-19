@@ -36,6 +36,20 @@ public sealed class InMemoryArticleRepository : IArticleRepository
         return Task.FromResult(article);
     }
 
+    // 新規追加：メモリ内の記事を一覧取得
+    public Task<IReadOnlyList<Article>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        IReadOnlyList<Article> articles = _articles.Values
+            .OrderByDescending(article => article.CreatedAt)
+            .ThenByDescending(article => article.Id)
+            .ToList();
+
+        return Task.FromResult(articles);
+    }
+
     public Task UpdateAsync(
         Article article,
         CancellationToken cancellationToken = default)

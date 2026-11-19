@@ -10,6 +10,7 @@ namespace FujitNotes.Infrastructure.Tests.Articles;
 
 public class EfArticleRepositoryTests
 {
+    // テスト専用PostgreSQLに接続
     private static FujitNotesDbContext CreateDbContext()
     {
         var connectionString =
@@ -23,9 +24,10 @@ public class EfArticleRepositoryTests
         }
 
         var builder =
-            new NpgsqlConnectionStringBuilder(connectionString);
+            new NpgsqlConnectionStringBuilder(
+                connectionString);
 
-        // テスト専用DB以外への接続を拒否
+        // 開発用DBへの誤接続を防止
         if (builder.Database != "fujitnotes_test" ||
             builder.Host != "localhost" ||
             builder.Port != 5433)
@@ -42,6 +44,7 @@ public class EfArticleRepositoryTests
         return new FujitNotesDbContext(options);
     }
 
+    // テストで作成した記事だけを削除
     private static async Task CleanupAsync(Guid id)
     {
         await using var db = CreateDbContext();
@@ -73,14 +76,17 @@ public class EfArticleRepositoryTests
             await using (var db = CreateDbContext())
             {
                 var repository = new EfArticleRepository(db);
-
-                var saved =
-                    await repository.GetByIdAsync(article.Id);
+                var saved = await repository.GetByIdAsync(
+                    article.Id);
 
                 Assert.NotNull(saved);
                 Assert.Equal(article.Id, saved.Id);
-                Assert.Equal("DB保存テスト", saved.Title.Value);
-                Assert.Equal(ArticleStatus.Draft, saved.Status);
+                Assert.Equal(
+                    "DB保存テスト",
+                    saved.Title.Value);
+                Assert.Equal(
+                    ArticleStatus.Draft,
+                    saved.Status);
             }
         }
         finally
@@ -107,9 +113,8 @@ public class EfArticleRepositoryTests
             await using (var db = CreateDbContext())
             {
                 var repository = new EfArticleRepository(db);
-
-                var saved =
-                    await repository.GetByIdAsync(article.Id);
+                var saved = await repository.GetByIdAsync(
+                    article.Id);
 
                 Assert.NotNull(saved);
 
@@ -121,9 +126,8 @@ public class EfArticleRepositoryTests
             await using (var db = CreateDbContext())
             {
                 var repository = new EfArticleRepository(db);
-
-                var published =
-                    await repository.GetByIdAsync(article.Id);
+                var published = await repository.GetByIdAsync(
+                    article.Id);
 
                 Assert.NotNull(published);
                 Assert.Equal(
@@ -145,9 +149,70 @@ public class EfArticleRepositoryTests
 
         var repository = new EfArticleRepository(db);
 
-        var result =
-            await repository.GetByIdAsync(Guid.NewGuid());
+        var result = await repository.GetByIdAsync(
+            Guid.NewGuid());
 
         Assert.Null(result);
+    }
+
+    // Step 17-4：新規追加
+    [Fact]
+    public async Task GetAllAsync_複数記事を新しい順に取得できる()
+    {
+        var article1 = new Article(
+            "一覧テスト記事1",
+            "1件目の本文");
+
+        var article2 = new Article(
+            "一覧テスト記事2",
+            "2件目の本文");
+
+        try
+        {
+            // 2件の記事をPostgreSQLに保存
+            await using (var db = CreateDbContext())
+            {
+                var repository = new EfArticleRepository(db);
+
+                await repository.AddAsync(article1);
+                await repository.AddAsync(article2);
+            }
+
+            // 別のDbContextでDBから再取得
+            await using (var db = CreateDbContext())
+            {
+                var repository = new EfArticleRepository(db);
+
+                var articles = await repository.GetAllAsync();
+
+                // 保存した2件が含まれていること
+                Assert.Contains(
+                    articles,
+                    a => a.Id == article1.Id);
+
+                Assert.Contains(
+                    articles,
+                    a => a.Id == article2.Id);
+
+                // 全体が作成日時の降順であること
+                var expectedIds = articles
+                    .OrderByDescending(a => a.CreatedAt)
+                    .ThenByDescending(a => a.Id)
+                    .Select(a => a.Id)
+                    .ToArray();
+
+                var actualIds = articles
+                    .Select(a => a.Id)
+                    .ToArray();
+
+                Assert.Equal(expectedIds, actualIds);
+            }
+        }
+        finally
+        {
+            // 今回作成した2件だけを削除
+            await CleanupAsync(article1.Id);
+            await CleanupAsync(article2.Id);
+        }
     }
 }

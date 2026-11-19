@@ -11,19 +11,23 @@ public sealed class ArticlesController : ControllerBase
 {
     private readonly CreateArticleUseCase _createArticle;
     private readonly GetArticleUseCase _getArticle;
+    private readonly GetArticlesUseCase _getArticles;
     private readonly PublishArticleUseCase _publishArticle;
 
     public ArticlesController(
         CreateArticleUseCase createArticle,
         GetArticleUseCase getArticle,
+        GetArticlesUseCase getArticles,
         PublishArticleUseCase publishArticle)
     {
         _createArticle = createArticle;
         _getArticle = getArticle;
+        _getArticles = getArticles;
         _publishArticle = publishArticle;
     }
 
     // POST /api/articles
+    // 記事を新規作成
     [HttpPost]
     public async Task<ActionResult<CreateArticleResponse>> Create(
         [FromBody] CreateArticleRequest request,
@@ -47,7 +51,25 @@ public sealed class ArticlesController : ControllerBase
         }
     }
 
+    // GET /api/articles
+    // 記事一覧を取得
+    [HttpGet]
+    public async Task<ActionResult<
+        IReadOnlyList<ArticleResponse>>> GetAll(
+        CancellationToken cancellationToken)
+    {
+        var articles = await _getArticles.ExecuteAsync(
+            cancellationToken);
+
+        var response = articles
+            .Select(ToResponse)
+            .ToList();
+
+        return Ok(response);
+    }
+
     // GET /api/articles/{id}
+    // IDを指定して記事を取得
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ArticleResponse>> GetById(
         Guid id,
@@ -66,6 +88,7 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // POST /api/articles/{id}/publish
+    // 下書き記事を公開状態にする
     [HttpPost("{id:guid}/publish")]
     public async Task<IActionResult> Publish(
         Guid id,
@@ -90,8 +113,9 @@ public sealed class ArticlesController : ControllerBase
         }
     }
 
-    // DomainモデルをAPIレスポンスに変換
-    private static ArticleResponse ToResponse(Article article)
+    // DomainのArticleをAPIレスポンスへ変換
+    private static ArticleResponse ToResponse(
+        Article article)
     {
         return new ArticleResponse(
             article.Id,
@@ -103,16 +127,15 @@ public sealed class ArticlesController : ControllerBase
     }
 }
 
-// APIの入力モデル
+// 記事作成リクエスト
 public sealed record CreateArticleRequest(
     string Title,
     string Content);
 
-// 記事作成時のレスポンス
-public sealed record CreateArticleResponse(
-    Guid Id);
+// 記事作成レスポンス
+public sealed record CreateArticleResponse(Guid Id);
 
-// 記事取得時のレスポンス
+// 記事取得レスポンス
 public sealed record ArticleResponse(
     Guid Id,
     string Title,

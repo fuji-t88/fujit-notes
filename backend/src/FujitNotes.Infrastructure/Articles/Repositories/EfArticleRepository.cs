@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FujitNotes.Infrastructure.Articles.Repositories;
 
-public sealed class EfArticleRepository : IArticleRepository
+public class EfArticleRepository : IArticleRepository
 {
     private readonly FujitNotesDbContext _dbContext;
 
@@ -16,7 +16,6 @@ public sealed class EfArticleRepository : IArticleRepository
         _dbContext = dbContext;
     }
 
-    // 記事を新規保存
     public async Task AddAsync(
         Article article,
         CancellationToken cancellationToken = default)
@@ -29,7 +28,6 @@ public sealed class EfArticleRepository : IArticleRepository
             cancellationToken);
     }
 
-    // IDから記事を取得
     public async Task<Article?> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default)
@@ -40,7 +38,17 @@ public sealed class EfArticleRepository : IArticleRepository
                 cancellationToken);
     }
 
-    // 記事を更新
+    // 新規追加：新しい記事から一覧取得
+    public async Task<IReadOnlyList<Article>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Articles
+            .AsNoTracking()
+            .OrderByDescending(article => article.CreatedAt)
+            .ThenByDescending(article => article.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task UpdateAsync(
         Article article,
         CancellationToken cancellationToken = default)

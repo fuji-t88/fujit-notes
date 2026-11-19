@@ -2,6 +2,7 @@
 using FujitNotes.Application.Articles.Repositories;
 using FujitNotes.Application.Articles.UseCases;
 using FujitNotes.Domain.Articles;
+using Xunit;
 
 namespace FujitNotes.Application.Tests.Articles;
 
@@ -47,6 +48,7 @@ public class ArticleUseCaseTests
         // Arrange
         var repository = new FakeArticleRepository();
         var article = new Article("テスト記事", "本文");
+
         await repository.AddAsync(article);
 
         var useCase = new GetArticleUseCase(repository);
@@ -79,6 +81,7 @@ public class ArticleUseCaseTests
         // Arrange
         var repository = new FakeArticleRepository();
         var article = new Article("公開テスト", "本文あり");
+
         await repository.AddAsync(article);
 
         var useCase = new PublishArticleUseCase(repository);
@@ -115,6 +118,7 @@ public class ArticleUseCaseTests
         // Arrange
         var repository = new FakeArticleRepository();
         var article = new Article("タイトル", "");
+
         await repository.AddAsync(article);
 
         var useCase = new PublishArticleUseCase(repository);
@@ -126,7 +130,7 @@ public class ArticleUseCaseTests
         Assert.Equal(ArticleStatus.Draft, article.Status);
     }
 
-    // テスト専用のRepository
+    // Application層のテスト専用Repository
     private sealed class FakeArticleRepository : IArticleRepository
     {
         public Dictionary<Guid, Article> Articles { get; } = new();
@@ -135,7 +139,10 @@ public class ArticleUseCaseTests
             Article article,
             CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             Articles.Add(article.Id, article);
+
             return Task.CompletedTask;
         }
 
@@ -143,15 +150,35 @@ public class ArticleUseCaseTests
             Guid id,
             CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             Articles.TryGetValue(id, out var article);
+
             return Task.FromResult(article);
+        }
+
+        // Step 17で追加：記事一覧取得
+        public Task<IReadOnlyList<Article>> GetAllAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            IReadOnlyList<Article> articles = Articles.Values
+                .OrderByDescending(article => article.CreatedAt)
+                .ThenByDescending(article => article.Id)
+                .ToList();
+
+            return Task.FromResult(articles);
         }
 
         public Task UpdateAsync(
             Article article,
             CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             Articles[article.Id] = article;
+
             return Task.CompletedTask;
         }
     }

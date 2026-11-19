@@ -10,37 +10,36 @@ var builder = WebApplication.CreateBuilder(args);
 // Controllerを登録
 builder.Services.AddControllers();
 
-// PostgreSQLの接続文字列を取得
+// PostgreSQLの接続文字列
 var connectionString =
     builder.Configuration.GetConnectionString(
         "DefaultConnection");
 
-// 接続文字列の設定確認
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
         "PostgreSQLの接続文字列が設定されていません。");
 }
 
-// EF CoreとPostgreSQLを登録
+// EF CoreとPostgreSQL
 builder.Services.AddDbContext<FujitNotesDbContext>(
-    options =>
-        options.UseNpgsql(connectionString));
+    options => options.UseNpgsql(connectionString));
 
-// RepositoryをPostgreSQL用に変更
+// Repository
 builder.Services.AddScoped<
     IArticleRepository,
     EfArticleRepository>();
 
-// Application層のユースケース
+// Application UseCases
 builder.Services.AddScoped<CreateArticleUseCase>();
 builder.Services.AddScoped<GetArticleUseCase>();
+builder.Services.AddScoped<GetArticlesUseCase>();
 builder.Services.AddScoped<PublishArticleUseCase>();
 
 var app = builder.Build();
 
-// 認証機能が未実装のため、
-// 開発環境だけでControllerを有効にする
+// 認証機能がまだないため、
+// APIはDevelopment環境のみ有効
 if (app.Environment.IsDevelopment())
 {
     app.MapControllers();
