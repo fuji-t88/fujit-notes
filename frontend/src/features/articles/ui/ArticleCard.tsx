@@ -12,10 +12,12 @@ export function ArticleCard({
   return (
     <article className="rounded-xl border border-orange-100 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex h-full flex-col gap-4">
-        {/* カテゴリ */}
-        <span className="text-sm font-semibold text-orange-600">
-          {article.category}
-        </span>
+        {/* カテゴリがある場合だけ表示 */}
+        {article.category && (
+          <span className="text-sm font-semibold text-orange-600">
+            {article.category}
+          </span>
+        )}
 
         {/* 記事タイトル */}
         <h2 className="text-xl font-bold text-[#292929]">
@@ -32,17 +34,19 @@ export function ArticleCard({
           {article.excerpt}
         </p>
 
-        {/* タグ */}
-        <div className="flex flex-wrap gap-2">
-          {article.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-orange-50 px-3 py-1 text-xs text-orange-700"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        {/* タグがある場合だけ表示 */}
+        {article.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {article.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-orange-50 px-3 py-1 text-xs text-orange-700"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* 記事詳細へのリンク */}
         <Link

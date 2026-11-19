@@ -64,7 +64,11 @@ public sealed class PublicArticlesController : ControllerBase
             article.Id,
             article.Title.Value,
             article.Content,
-            article.PublishedAt);
+            article.PublishedAt,
+            article.Category?.Value,
+            article.Tags
+                .Select(tag => tag.Value)
+                .ToArray());
     }
 }
 
@@ -73,4 +77,6 @@ public sealed record PublicArticleResponse(
     Guid Id,
     string Title,
     string Content,
-    DateTimeOffset? PublishedAt);
+    DateTimeOffset? PublishedAt,
+    string? Category,
+    IReadOnlyList<string> Tags);

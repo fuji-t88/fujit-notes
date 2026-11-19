@@ -6,6 +6,9 @@ export type PublicArticleDto = {
   title: string;
   content: string;
   publishedAt: string | null;
+  category: string | null;
+  tags: string[];
+
 };
 
 function getApiBaseUrl(): string {

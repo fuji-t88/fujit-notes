@@ -1,16 +1,10 @@
 
-import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import {
-  getPublicArticleById,
-} from "@/features/articles/api/publicArticlesApi";
-
-import {
-  toArticle,
-} from "@/features/articles/api/articleMapper";
+import { getPublicArticleById } from "../../../features/articles/api/publicArticlesApi";
+import { toArticle } from "../../../features/articles/api/articleMapper";
 
 interface ArticlePageProps {
   params: Promise<{
@@ -18,29 +12,7 @@ interface ArticlePageProps {
   }>;
 }
 
-// 記事ごとのSEO情報を作成する
-export async function generateMetadata({
-  params,
-}: ArticlePageProps): Promise<Metadata> {
-  const { slug } = await params;
-
-  const dto = await getPublicArticleById(slug);
-
-  if (!dto) {
-    return {
-      title: "記事が見つかりません | Fujit Notes",
-    };
-  }
-
-  const article = toArticle(dto);
-
-  return {
-    title: `${article.title} | Fujit Notes`,
-    description: article.excerpt,
-  };
-}
-
-// ページ本体
+// 記事詳細ページ
 export default function ArticleDetailPage({
   params,
 }: ArticlePageProps) {
@@ -68,7 +40,7 @@ async function ArticleContent({
 }: ArticlePageProps) {
   const { slug } = await params;
 
-  // slugには暫定的に記事Guidが入る
+  // 現在は記事のUUIDをslugとして使用する
   const dto = await getPublicArticleById(slug);
 
   if (!dto) {
@@ -87,21 +59,30 @@ async function ArticleContent({
         ← 記事一覧へ戻る
       </Link>
 
-      {/* 記事タイトル・カテゴリ */}
+      {/* 記事タイトル・カテゴリ・タグ */}
       <header className="mt-8 border-b border-orange-100 pb-8">
-        <p className="font-semibold text-orange-600">
-          {article.category}
-        </p>
+        {/* カテゴリがある場合のみ表示 */}
+        {article.category && (
+          <p className="font-semibold text-orange-600">
+            {article.category}
+          </p>
+        )}
 
-        <h1 className="mt-4 text-4xl font-extrabold leading-tight text-[#292929]">
+        {/* 記事タイトル */}
+        <h1
+          className={`text-4xl font-extrabold leading-tight text-[#292929] ${
+            article.category ? "mt-4" : ""
+          }`}
+        >
           {article.title}
         </h1>
 
+        {/* 記事概要 */}
         <p className="mt-5 leading-relaxed text-gray-600">
           {article.excerpt}
         </p>
 
-        {/* タグ */}
+        {/* タグがある場合のみ表示 */}
         {article.tags.length > 0 && (
           <div className="mt-6 flex flex-wrap gap-2">
             {article.tags.map((tag) => (
@@ -109,7 +90,7 @@ async function ArticleContent({
                 key={tag}
                 className="rounded-full bg-orange-50 px-3 py-1 text-sm text-orange-700"
               >
-                {tag}
+                #{tag}
               </span>
             ))}
           </div>

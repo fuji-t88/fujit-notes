@@ -4,6 +4,6 @@ export interface Article {
   title: string;
   slug: string;
   excerpt: string;
-  category: string;
+  category: string | null;
   tags: string[];
 }
