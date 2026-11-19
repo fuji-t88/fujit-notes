@@ -29,19 +29,22 @@ builder.Services.AddScoped<
     IArticleRepository,
     EfArticleRepository>();
 
-// UseCaseの登録
+// 管理用UseCase
 builder.Services.AddScoped<CreateArticleUseCase>();
 builder.Services.AddScoped<GetArticleUseCase>();
 builder.Services.AddScoped<GetArticlesUseCase>();
 builder.Services.AddScoped<PublishArticleUseCase>();
 builder.Services.AddScoped<UpdateArticleUseCase>();
-
-// Step 19：記事アーカイブ
 builder.Services.AddScoped<ArchiveArticleUseCase>();
+
+// Step 20：読者向け公開記事取得UseCase
+builder.Services.AddScoped<GetPublishedArticlesUseCase>();
+builder.Services.AddScoped<GetPublishedArticleUseCase>();
 
 var app = builder.Build();
 
-// 認証未実装のためDevelopment環境のみ有効化
+// 認証・本番公開設定が未実装のため
+// 現時点ではDevelopment環境のみControllerを登録
 if (app.Environment.IsDevelopment())
 {
     app.MapControllers();
