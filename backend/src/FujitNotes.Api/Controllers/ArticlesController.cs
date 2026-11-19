@@ -14,19 +14,22 @@ public sealed class ArticlesController : ControllerBase
     private readonly GetArticlesUseCase _getArticles;
     private readonly PublishArticleUseCase _publishArticle;
     private readonly UpdateArticleUseCase _updateArticle;
+    private readonly ArchiveArticleUseCase _archiveArticle;
 
     public ArticlesController(
         CreateArticleUseCase createArticle,
         GetArticleUseCase getArticle,
         GetArticlesUseCase getArticles,
         PublishArticleUseCase publishArticle,
-        UpdateArticleUseCase updateArticle)
+        UpdateArticleUseCase updateArticle,
+        ArchiveArticleUseCase archiveArticle)
     {
         _createArticle = createArticle;
         _getArticle = getArticle;
         _getArticles = getArticles;
         _publishArticle = publishArticle;
         _updateArticle = updateArticle;
+        _archiveArticle = archiveArticle;
     }
 
     // POST /api/articles
@@ -62,7 +65,8 @@ public sealed class ArticlesController : ControllerBase
         var articles = await _getArticles.ExecuteAsync(
             cancellationToken);
 
-        return Ok(articles.Select(ToResponse).ToList());
+        return Ok(
+            articles.Select(ToResponse).ToList());
     }
 
     // GET /api/articles/{id}
@@ -84,7 +88,7 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // PUT /api/articles/{id}
-    // 下書き記事のみ編集可能
+    // 下書きの記事のみ編集可能
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(
         Guid id,
@@ -141,7 +145,34 @@ public sealed class ArticlesController : ControllerBase
         }
     }
 
-    private static ArticleResponse ToResponse(Article article)
+    // POST /api/articles/{id}/archive
+    // 下書き・公開済みの記事をアーカイブする
+    [HttpPost("{id:guid}/archive")]
+    public async Task<IActionResult> Archive(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var found = await _archiveArticle.ExecuteAsync(
+                id,
+                cancellationToken);
+
+            if (!found)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    private static ArticleResponse ToResponse(
+        Article article)
     {
         return new ArticleResponse(
             article.Id,
