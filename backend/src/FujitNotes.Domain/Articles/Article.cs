@@ -31,7 +31,7 @@ public class Article
         PublishedAt = null;
     }
 
-    // 記事タイトルを変更する
+    // 既存のタイトル変更メソッド
     public void ChangeTitle(string newTitle)
     {
         if (Status == ArticleStatus.Archived)
@@ -41,6 +41,29 @@ public class Article
         }
 
         Title = new ArticleTitle(newTitle);
+    }
+
+    // Step 18：下書き記事のタイトルと本文を編集
+    public void EditDraft(string newTitle, string newContent)
+    {
+        if (Status != ArticleStatus.Draft)
+        {
+            throw new InvalidOperationException(
+                "下書きの記事のみ編集できます。");
+        }
+
+        // 変更前にすべての入力を検証する
+        var validatedTitle = new ArticleTitle(newTitle);
+
+        if (newContent is null)
+        {
+            throw new ArgumentException(
+                "本文にnullは指定できません。",
+                nameof(newContent));
+        }
+
+        Title = validatedTitle;
+        Content = newContent;
     }
 
     // 記事を公開する

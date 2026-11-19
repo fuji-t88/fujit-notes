@@ -13,21 +13,23 @@ public sealed class ArticlesController : ControllerBase
     private readonly GetArticleUseCase _getArticle;
     private readonly GetArticlesUseCase _getArticles;
     private readonly PublishArticleUseCase _publishArticle;
+    private readonly UpdateArticleUseCase _updateArticle;
 
     public ArticlesController(
         CreateArticleUseCase createArticle,
         GetArticleUseCase getArticle,
         GetArticlesUseCase getArticles,
-        PublishArticleUseCase publishArticle)
+        PublishArticleUseCase publishArticle,
+        UpdateArticleUseCase updateArticle)
     {
         _createArticle = createArticle;
         _getArticle = getArticle;
         _getArticles = getArticles;
         _publishArticle = publishArticle;
+        _updateArticle = updateArticle;
     }
 
     // POST /api/articles
-    // 記事を新規作成
     [HttpPost]
     public async Task<ActionResult<CreateArticleResponse>> Create(
         [FromBody] CreateArticleRequest request,
@@ -52,7 +54,6 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // GET /api/articles
-    // 記事一覧を取得
     [HttpGet]
     public async Task<ActionResult<
         IReadOnlyList<ArticleResponse>>> GetAll(
@@ -61,15 +62,10 @@ public sealed class ArticlesController : ControllerBase
         var articles = await _getArticles.ExecuteAsync(
             cancellationToken);
 
-        var response = articles
-            .Select(ToResponse)
-            .ToList();
-
-        return Ok(response);
+        return Ok(articles.Select(ToResponse).ToList());
     }
 
     // GET /api/articles/{id}
-    // IDを指定して記事を取得
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ArticleResponse>> GetById(
         Guid id,
@@ -87,8 +83,40 @@ public sealed class ArticlesController : ControllerBase
         return Ok(ToResponse(article));
     }
 
+    // PUT /api/articles/{id}
+    // 下書き記事のみ編集可能
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(
+        Guid id,
+        [FromBody] UpdateArticleRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var found = await _updateArticle.ExecuteAsync(
+                id,
+                request.Title,
+                request.Content,
+                cancellationToken);
+
+            if (!found)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
     // POST /api/articles/{id}/publish
-    // 下書き記事を公開状態にする
     [HttpPost("{id:guid}/publish")]
     public async Task<IActionResult> Publish(
         Guid id,
@@ -113,9 +141,7 @@ public sealed class ArticlesController : ControllerBase
         }
     }
 
-    // DomainのArticleをAPIレスポンスへ変換
-    private static ArticleResponse ToResponse(
-        Article article)
+    private static ArticleResponse ToResponse(Article article)
     {
         return new ArticleResponse(
             article.Id,
@@ -127,15 +153,17 @@ public sealed class ArticlesController : ControllerBase
     }
 }
 
-// 記事作成リクエスト
 public sealed record CreateArticleRequest(
     string Title,
     string Content);
 
-// 記事作成レスポンス
-public sealed record CreateArticleResponse(Guid Id);
+public sealed record UpdateArticleRequest(
+    string Title,
+    string Content);
 
-// 記事取得レスポンス
+public sealed record CreateArticleResponse(
+    Guid Id);
+
 public sealed record ArticleResponse(
     Guid Id,
     string Title,
