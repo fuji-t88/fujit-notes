@@ -33,17 +33,43 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // POST /api/articles
+    // カテゴリ・タグを指定した記事作成にも対応
     [HttpPost]
     public async Task<ActionResult<CreateArticleResponse>> Create(
         [FromBody] CreateArticleRequest request,
         CancellationToken cancellationToken)
     {
+        // metadataを指定した場合はtagsを必須とする
+        if (request.Metadata is { Tags: null })
+        {
+            return BadRequest(new
+            {
+                message = "metadataを指定する場合、tagsが必要です。"
+            });
+        }
+
         try
         {
-            var id = await _createArticle.ExecuteAsync(
-                request.Title,
-                request.Content,
-                cancellationToken);
+            Guid id;
+
+            if (request.Metadata is null)
+            {
+                // 従来の記事作成
+                id = await _createArticle.ExecuteAsync(
+                    request.Title,
+                    request.Content,
+                    cancellationToken);
+            }
+            else
+            {
+                // カテゴリ・タグ付きの記事作成
+                id = await _createArticle.ExecuteAsync(
+                    request.Title,
+                    request.Content,
+                    request.Metadata.Category,
+                    request.Metadata.Tags!,
+                    cancellationToken);
+            }
 
             return CreatedAtAction(
                 nameof(GetById),
@@ -95,13 +121,40 @@ public sealed class ArticlesController : ControllerBase
         [FromBody] UpdateArticleRequest request,
         CancellationToken cancellationToken)
     {
+        // metadataを指定した場合はtagsを必須とする
+        if (request.Metadata is { Tags: null })
+        {
+            return BadRequest(new
+            {
+                message = "metadataを指定する場合、tagsが必要です。"
+            });
+        }
+
         try
         {
-            var found = await _updateArticle.ExecuteAsync(
-                id,
-                request.Title,
-                request.Content,
-                cancellationToken);
+            bool found;
+
+            if (request.Metadata is null)
+            {
+                // 従来の更新
+                // カテゴリ・タグは維持する
+                found = await _updateArticle.ExecuteAsync(
+                    id,
+                    request.Title,
+                    request.Content,
+                    cancellationToken);
+            }
+            else
+            {
+                // カテゴリ・タグも更新する
+                found = await _updateArticle.ExecuteAsync(
+                    id,
+                    request.Title,
+                    request.Content,
+                    request.Metadata.Category,
+                    request.Metadata.Tags!,
+                    cancellationToken);
+            }
 
             if (!found)
             {
@@ -146,7 +199,6 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // POST /api/articles/{id}/archive
-    // 下書き・公開済みの記事をアーカイブする
     [HttpPost("{id:guid}/archive")]
     public async Task<IActionResult> Archive(
         Guid id,
@@ -171,6 +223,7 @@ public sealed class ArticlesController : ControllerBase
         }
     }
 
+    // DomainモデルからAPIレスポンスへ変換
     private static ArticleResponse ToResponse(
         Article article)
     {
@@ -180,25 +233,42 @@ public sealed class ArticlesController : ControllerBase
             article.Content,
             article.Status.ToString(),
             article.CreatedAt,
-            article.PublishedAt);
+            article.PublishedAt,
+            article.Category?.Value,
+            article.Tags
+                .Select(tag => tag.Value)
+                .ToArray());
     }
 }
 
+// 記事作成リクエスト
 public sealed record CreateArticleRequest(
     string Title,
-    string Content);
+    string Content,
+    ArticleMetadataRequest? Metadata = null);
 
+// 記事更新リクエスト
 public sealed record UpdateArticleRequest(
     string Title,
-    string Content);
+    string Content,
+    ArticleMetadataRequest? Metadata = null);
 
+// カテゴリ・タグの入力
+public sealed record ArticleMetadataRequest(
+    string? Category,
+    IReadOnlyList<string>? Tags);
+
+// 記事作成レスポンス
 public sealed record CreateArticleResponse(
     Guid Id);
 
+// 記事取得レスポンス
 public sealed record ArticleResponse(
     Guid Id,
     string Title,
     string Content,
     string Status,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? PublishedAt);
+    DateTimeOffset? PublishedAt,
+    string? Category,
+    IReadOnlyList<string> Tags);

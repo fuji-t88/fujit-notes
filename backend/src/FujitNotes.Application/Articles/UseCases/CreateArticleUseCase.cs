@@ -14,15 +14,41 @@ public sealed class CreateArticleUseCase
         _repository = repository;
     }
 
-    public async Task<Guid> ExecuteAsync(
+    // 従来の記事作成処理
+    // タイトルと本文のみで作成できる
+    public Task<Guid> ExecuteAsync(
         string title,
         string content,
         CancellationToken cancellationToken = default)
     {
-        // Domainモデルに記事作成を任せる
+        return ExecuteAsync(
+            title,
+            content,
+            category: null,
+            tags: Array.Empty<string>(),
+            cancellationToken: cancellationToken);
+    }
+
+    // カテゴリ・タグ付きの記事作成処理
+    public async Task<Guid> ExecuteAsync(
+        string title,
+        string content,
+        string? category,
+        IEnumerable<string> tags,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(tags);
+
+        // Domainモデルで記事を作成
         var article = new Article(title, content);
 
-        // Repositoryを通じて記事を保存する
+        // カテゴリを設定
+        article.ChangeCategory(category);
+
+        // タグを設定
+        article.ChangeTags(tags);
+
+        // Repositoryを通じて保存
         await _repository.AddAsync(
             article,
             cancellationToken);
