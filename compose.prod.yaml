@@ -1,0 +1,62 @@
+
+name: fujit-notes-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fujitnotes
+      POSTGRES_USER: fujitnotes
+      POSTGRES_PASSWORD: ${FUJITNOTES_PROD_DB_PASSWORD:?Production DB password is required}
+    volumes:
+      - prod-postgres-data:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U fujitnotes -d fujitnotes
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: ./backend
+    image: fujit-notes-api:prod
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      DOTNET_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=fujitnotes;Username=fujitnotes;Password=${FUJITNOTES_PROD_DB_PASSWORD:?Production DB password is required}"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - data
+      - app
+
+  web:
+    build:
+      context: ./frontend
+    image: fujit-notes-frontend:prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      FUJIT_NOTES_API_BASE_URL: http://api:8080
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - api
+    networks:
+      - app
+
+volumes:
+  prod-postgres-data:
+
+networks:
+  data:
+    internal: true
+  app:
