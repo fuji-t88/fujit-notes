@@ -1,4 +1,3 @@
-
 using FujitNotes.Application.Articles.Repositories;
 using FujitNotes.Application.Articles.UseCases;
 using FujitNotes.Infrastructure.Articles.Repositories;
@@ -12,8 +11,7 @@ builder.Services.AddControllers();
 
 // PostgreSQL接続
 var connectionString =
-    builder.Configuration.GetConnectionString(
-        "DefaultConnection");
+    builder.Configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -29,7 +27,7 @@ builder.Services.AddScoped<
     IArticleRepository,
     EfArticleRepository>();
 
-// 管理用UseCase
+// 記事管理用UseCase
 builder.Services.AddScoped<CreateArticleUseCase>();
 builder.Services.AddScoped<GetArticleUseCase>();
 builder.Services.AddScoped<GetArticlesUseCase>();
@@ -37,17 +35,37 @@ builder.Services.AddScoped<PublishArticleUseCase>();
 builder.Services.AddScoped<UpdateArticleUseCase>();
 builder.Services.AddScoped<ArchiveArticleUseCase>();
 
-// Step 20：読者向け公開記事取得UseCase
+// 読者向けUseCase
 builder.Services.AddScoped<GetPublishedArticlesUseCase>();
 builder.Services.AddScoped<GetPublishedArticleUseCase>();
 
 var app = builder.Build();
 
-// 認証・本番公開設定が未実装のため
-// 現時点ではDevelopment環境のみControllerを登録
-if (app.Environment.IsDevelopment())
+// Step 25：本番環境のAPIアクセス制限
+// Development以外では、公開記事のGETのみを許可する。
+if (!app.Environment.IsDevelopment())
 {
-    app.MapControllers();
+    app.Use(async (context, next) =>
+    {
+        var isPublicArticleRead =
+            HttpMethods.IsGet(context.Request.Method)
+            && context.Request.Path.StartsWithSegments(
+                "/api/public/articles",
+                StringComparison.OrdinalIgnoreCase);
+
+        if (!isPublicArticleRead)
+        {
+            context.Response.StatusCode =
+                StatusCodes.Status404NotFound;
+
+            return;
+        }
+
+        await next();
+    });
 }
+
+// 本番環境でも読者向けControllerを利用可能にする
+app.MapControllers();
 
 app.Run();
