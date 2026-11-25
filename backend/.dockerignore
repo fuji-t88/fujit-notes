@@ -1,0 +1,25 @@
+# Build outputs
+**/bin
+**/obj
+**/TestResults
+**/coverage
+
+# Local configuration and secrets
+.env
+.env.*
+**/.env
+**/.env.*
+**/appsettings.Development.json
+**/appsettings.Production.json
+
+# Local tooling
+.git
+.vs
+.vscode
+
+# User-specific files
+*.user
+*.suo
+
+# Logs
+*.log

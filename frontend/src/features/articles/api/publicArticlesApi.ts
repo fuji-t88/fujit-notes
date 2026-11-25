@@ -1,5 +1,6 @@
-
 import "server-only";
+
+import { connection } from "next/server";
 
 export type PublicArticleDto = {
   id: string;
@@ -8,7 +9,6 @@ export type PublicArticleDto = {
   publishedAt: string | null;
   category: string | null;
   tags: string[];
-
 };
 
 function getApiBaseUrl(): string {
@@ -23,9 +23,13 @@ function getApiBaseUrl(): string {
   return url.replace(/\/+$/, "");
 }
 
+// 公開記事一覧を取得
 export async function getPublicArticles(): Promise<
   PublicArticleDto[]
 > {
+  // ビルド時ではなく、リクエスト時に取得する
+  await connection();
+
   const response = await fetch(
     `${getApiBaseUrl()}/api/public/articles`,
     {
@@ -42,9 +46,13 @@ export async function getPublicArticles(): Promise<
   return (await response.json()) as PublicArticleDto[];
 }
 
+// 公開記事詳細を取得
 export async function getPublicArticleById(
   id: string,
 ): Promise<PublicArticleDto | null> {
+  // ビルド時ではなく、リクエスト時に取得する
+  await connection();
+
   const response = await fetch(
     `${getApiBaseUrl()}/api/public/articles/${encodeURIComponent(id)}`,
     {

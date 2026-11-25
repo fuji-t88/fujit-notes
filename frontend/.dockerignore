@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+
+# Next.js build outputs
+.next
+out
+
+# Local environment and secrets
+.env
+.env.*
+
+# Git
+.git
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test and temporary files
+coverage
+.DS_Store

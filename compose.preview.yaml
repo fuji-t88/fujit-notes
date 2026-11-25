@@ -1,0 +1,44 @@
+name: fujit-notes-preview
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: fujitnotes_preview
+      POSTGRES_USER: fujitnotes
+      POSTGRES_PASSWORD: ${FUJITNOTES_PREVIEW_DB_PASSWORD:?Password is required}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - preview-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U fujitnotes -d fujitnotes_preview
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    image: fujit-notes-api:step26
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      DOTNET_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=fujitnotes_preview;Username=fujitnotes;Password=${FUJITNOTES_PREVIEW_DB_PASSWORD:?Password is required}"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: fujit-notes-frontend:step26
+    environment:
+      NODE_ENV: production
+      FUJIT_NOTES_API_BASE_URL: http://api:8080
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - api
+
+volumes:
+  preview-postgres-data:
