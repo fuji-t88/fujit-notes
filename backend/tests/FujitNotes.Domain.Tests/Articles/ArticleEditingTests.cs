@@ -1,4 +1,3 @@
-
 using FujitNotes.Domain.Articles;
 using Xunit;
 
@@ -52,17 +51,21 @@ public class ArticleEditingTests
     }
 
     [Fact]
-    public void EditDraft_アーカイブ済み記事は編集できない()
+    public void EditDraft_非公開記事は編集できる()
     {
-        var article = new Article(
-            "保存記事",
-            "本文");
-
+        var article = new Article("保存記事", "本文");
+        article.Publish();
+        var publishedAt = article.PublishedAt;
         article.Archive();
 
-        Assert.Throws<InvalidOperationException>(() =>
-            article.EditDraft("変更後", "変更後本文"));
+        article.EditDraft("変更後", "変更後本文");
+
+        Assert.Equal("変更後", article.Title.Value);
+        Assert.Equal("変更後本文", article.Content);
+        Assert.Equal(ArticleStatus.Archived, article.Status);
+        Assert.Equal(publishedAt, article.PublishedAt);
     }
+
 
     [Theory]
     [InlineData("")]

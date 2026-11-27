@@ -1,0 +1,98 @@
+name: Admin API production smoke test
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/admin-api-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  admin-api-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore and build API
+        run: |
+          dotnet restore backend/src/FujitNotes.Api/FujitNotes.Api.csproj
+          dotnet build backend/src/FujitNotes.Api/FujitNotes.Api.csproj --no-restore
+
+      - name: Test domain and application
+        run: |
+          dotnet test backend/tests/FujitNotes.Domain.Tests/FujitNotes.Domain.Tests.csproj
+          dotnet test backend/tests/FujitNotes.Application.Tests/FujitNotes.Application.Tests.csproj
+
+      - name: Verify production-mode admin authentication
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
+          ConnectionStrings__DefaultConnection: "Host=127.0.0.1;Port=5433;Database=fujitnotes_test;Username=ci;Password=ci"
+          AdminAuth__Username: ci-admin
+          AdminAuth__PasswordHash: "AQAAAAIAAYagAAAAEAABAgMEBQYHCAkKCwwNDg+ocSpXodqqXBvJqQNmsWmV7tAMQ5otjLO/da5AGbLbJA=="
+        run: |
+          dotnet run --project backend/src/FujitNotes.Api/FujitNotes.Api.csproj --no-build --no-launch-profile --urls http://127.0.0.1:5050 > /tmp/fujit-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          python3 - <<'PY'
+          import http.cookiejar
+          import time
+          import urllib.error
+          import urllib.request
+          import json
+
+          base = "http://127.0.0.1:5050"
+          for attempt in range(30):
+              try:
+                  with urllib.request.urlopen(base + "/api/admin/auth/me", timeout=2):
+                      pass
+              except urllib.error.HTTPError as exc:
+                  if exc.code == 401:
+                      break
+              except Exception:
+                  time.sleep(1)
+          else:
+              raise RuntimeError("Production API did not become ready with unauthenticated /me=401")
+
+          def request(path, method="GET", data=None, cookie=None):
+              headers = {}
+              if data is not None:
+                  headers["Content-Type"] = "application/json"
+              if cookie is not None:
+                  headers["Cookie"] = cookie
+              req = urllib.request.Request(base + path, data=data, method=method, headers=headers)
+              try:
+                  return urllib.request.urlopen(req, timeout=10)
+              except urllib.error.HTTPError as exc:
+                  return exc
+
+          unauthenticated = request("/api/articles")
+          assert unauthenticated.status == 401, f"Expected 401, got {unauthenticated.status}"
+          unauthenticated.close()
+
+          credentials = json.dumps({"username": "ci-admin", "password": "ci-only-auth-smoke-password"}).encode()
+          login = request("/api/admin/auth/login", "POST", credentials)
+          assert login.status == 200, f"Expected login 200, got {login.status}"
+          set_cookie = login.headers.get("Set-Cookie")
+          assert set_cookie and "FujitNotes.Admin=" in set_cookie, "Missing auth cookie"
+          login.close()
+
+          cookie = set_cookie.split(";", 1)[0]
+          identity = request("/api/admin/auth/me", cookie=cookie)
+          assert identity.status == 200, f"Expected authenticated /me=200, got {identity.status}"
+          payload = json.load(identity)
+          assert payload["authenticated"] and payload["username"] == "ci-admin"
+          identity.close()
+
+          forbidden_path = request("/api/not-allowed", cookie=cookie)
+          assert forbidden_path.status == 404, f"Expected unknown endpoint 404, got {forbidden_path.status}"
+          forbidden_path.close()
+
+          print("Production authentication smoke test passed (401 unauthenticated, 200 login, 200 session, 404 other path)")
+          PY
+          cat /tmp/fujit-api.log

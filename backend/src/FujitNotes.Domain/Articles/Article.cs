@@ -17,7 +17,6 @@ public class Article
 
     public DateTimeOffset? PublishedAt { get; private set; }
 
-    // Step 23：カテゴリとタグ
     public ArticleCategory? Category { get; private set; }
 
     public IReadOnlyList<ArticleTag> Tags => _tags.AsReadOnly();
@@ -47,19 +46,18 @@ public class Article
     // タイトルを変更する
     public void ChangeTitle(string newTitle)
     {
-        if (Status == ArticleStatus.Archived)
-        {
-            throw new InvalidOperationException(
-                "アーカイブ済みの記事は編集できません。");
-        }
+        EnsureEditable();
 
         Title = new ArticleTitle(newTitle);
     }
 
-    // 下書き記事のタイトルと本文を編集する
-    public void EditDraft(string newTitle, string newContent)
+    // 下書き・非公開記事のタイトルと本文を編集する
+    // 既存ユースケースとの互換性のためメソッド名を維持
+    public void EditDraft(
+        string newTitle,
+        string newContent)
     {
-        EnsureDraft();
+        EnsureEditable();
 
         var validatedTitle = new ArticleTitle(newTitle);
 
@@ -74,12 +72,11 @@ public class Article
         Content = newContent;
     }
 
-    // Step 23：カテゴリを変更する
+    // カテゴリを変更する
     public void ChangeCategory(string? newCategory)
     {
-        EnsureDraft();
+        EnsureEditable();
 
-        // nullを指定した場合は未設定に戻す
         var validatedCategory = newCategory is null
             ? null
             : new ArticleCategory(newCategory);
@@ -87,17 +84,13 @@ public class Article
         Category = validatedCategory;
     }
 
-    // Step 23：タグをまとめて変更する
+    // タグをまとめて変更する
     public void ChangeTags(IEnumerable<string> newTags)
     {
-        EnsureDraft();
+        EnsureEditable();
 
-        if (newTags is null)
-        {
-            throw new ArgumentNullException(nameof(newTags));
-        }
+        ArgumentNullException.ThrowIfNull(newTags);
 
-        // 変更前にすべてのタグを検証する
         var validatedTags = newTags
             .Select(value => new ArticleTag(value))
             .ToList();
@@ -121,18 +114,24 @@ public class Article
                 nameof(newTags));
         }
 
-        // 検証成功後に変更する
         _tags.Clear();
         _tags.AddRange(validatedTags);
     }
 
-    // 記事を公開する
+    // 下書き・非公開記事を公開する
     public void Publish()
     {
-        if (Status == ArticleStatus.Archived)
+        if (Status == ArticleStatus.Published)
         {
             throw new InvalidOperationException(
-                "アーカイブ済みの記事は公開できません。");
+                "すでに公開済みの記事です。");
+        }
+
+        if (Status != ArticleStatus.Draft &&
+            Status != ArticleStatus.Archived)
+        {
+            throw new InvalidOperationException(
+                "この記事は公開できません。");
         }
 
         if (string.IsNullOrWhiteSpace(Content))
@@ -141,35 +140,35 @@ public class Article
                 "本文が空の記事は公開できません。");
         }
 
-        if (Status == ArticleStatus.Published)
-        {
-            throw new InvalidOperationException(
-                "すでに公開済みの記事です。");
-        }
-
         Status = ArticleStatus.Published;
+
+        // 再公開時も公開日時を更新する
         PublishedAt = DateTimeOffset.UtcNow;
     }
 
-    // 記事をアーカイブする
+    // 公開済み記事を非公開にする
+    // 既存API・DBとの互換性のためメソッド名を維持
     public void Archive()
     {
-        if (Status == ArticleStatus.Archived)
+        if (Status != ArticleStatus.Published)
         {
             throw new InvalidOperationException(
-                "すでにアーカイブ済みの記事です。");
+                "公開済みの記事のみ非公開にできます。");
         }
 
         Status = ArticleStatus.Archived;
+
+        // 非公開にした時点では最終公開日時を保持する
     }
 
-    // 下書きかどうかを確認する共通処理
-    private void EnsureDraft()
+    // 下書き・非公開記事のみ編集可能
+    private void EnsureEditable()
     {
-        if (Status != ArticleStatus.Draft)
+        if (Status != ArticleStatus.Draft &&
+            Status != ArticleStatus.Archived)
         {
             throw new InvalidOperationException(
-                "下書きの記事のみ編集できます。");
+                "下書きまたは非公開の記事のみ編集できます。");
         }
     }
 }

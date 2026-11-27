@@ -1,4 +1,3 @@
-
 using FujitNotes.Domain.Articles;
 
 namespace FujitNotes.Domain.Tests.Articles;
@@ -94,34 +93,70 @@ public class ArticleTests
     }
 
     [Fact]
-    public void Archive_DraftArticle_ChangesStatusToArchived()
+    public void Archive_DraftArticle_ThrowsInvalidOperationException()
     {
         var article = new Article("タイトル", "本文");
 
+        Assert.Throws<InvalidOperationException>(() => article.Archive());
+
+        Assert.Equal(ArticleStatus.Draft, article.Status);
+        Assert.Null(article.PublishedAt);
+    }
+
+
+    [Fact]
+    public void ChangeTitle_PrivateArticle_UpdatesTitle()
+    {
+        var article = new Article("タイトル", "本文");
+        article.Publish();
         article.Archive();
 
-        Assert.Equal(
-            ArticleStatus.Archived,
-            article.Status);
+        article.ChangeTitle("変更後");
+
+        Assert.Equal("変更後", article.Title.Value);
+        Assert.Equal(ArticleStatus.Archived, article.Status);
+    }
+
+
+    [Fact]
+    public void Publish_PrivateArticle_RepublishesAndUpdatesPublishedAt()
+    {
+        var article = new Article("タイトル", "本文");
+        article.Publish();
+        var firstPublishedAt = article.PublishedAt;
+        article.Archive();
+
+        article.Publish();
+
+        Assert.Equal(ArticleStatus.Published, article.Status);
+        Assert.NotNull(article.PublishedAt);
+        Assert.True(article.PublishedAt >= firstPublishedAt);
     }
 
     [Fact]
-    public void ChangeTitle_ArchivedArticle_ThrowsInvalidOperationException()
+    public void Publish_PrivateArticle_EmptyContentCannotBeRepublished()
     {
         var article = new Article("タイトル", "本文");
+        article.Publish();
         article.Archive();
+        article.EditDraft("タイトル", " ");
 
-        Assert.Throws<InvalidOperationException>(() =>
-            article.ChangeTitle("変更後"));
+        Assert.Throws<InvalidOperationException>(() => article.Publish());
+
+        Assert.Equal(ArticleStatus.Archived, article.Status);
     }
 
     [Fact]
-    public void Publish_ArchivedArticle_ThrowsInvalidOperationException()
+    public void Publish_PrivateArticle_CanRepeatPublishAndUnpublish()
     {
         var article = new Article("タイトル", "本文");
+        article.Publish();
+        article.Archive();
+        article.Publish();
         article.Archive();
 
-        Assert.Throws<InvalidOperationException>(() =>
-            article.Publish());
+        Assert.Equal(ArticleStatus.Archived, article.Status);
+        Assert.NotNull(article.PublishedAt);
     }
+
 }
