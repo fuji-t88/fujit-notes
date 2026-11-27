@@ -104,8 +104,8 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-// 本番環境では公開記事GETのみ許可する。
-// 管理者認証の実装とテストが完成するまで解除しない。
+// 本番環境では公開記事閲覧と管理者向けAPIのみ受け付ける。
+// 管理者向けAPIのアクセス制御は各Controllerの認可属性で行う。
 if (!app.Environment.IsDevelopment())
 {
     app.Use(async (context, next) =>
@@ -116,7 +116,19 @@ if (!app.Environment.IsDevelopment())
                 "/api/public/articles",
                 StringComparison.OrdinalIgnoreCase);
 
-        if (!isPublicArticleRead)
+        var isAdminAuthentication =
+            context.Request.Path.StartsWithSegments(
+                "/api/admin/auth",
+                StringComparison.OrdinalIgnoreCase);
+
+        var isAuthenticatedArticleApi =
+            context.Request.Path.StartsWithSegments(
+                "/api/articles",
+                StringComparison.OrdinalIgnoreCase);
+
+        if (!isPublicArticleRead
+            && !isAdminAuthentication
+            && !isAuthenticatedArticleApi)
         {
             context.Response.StatusCode =
                 StatusCodes.Status404NotFound;
