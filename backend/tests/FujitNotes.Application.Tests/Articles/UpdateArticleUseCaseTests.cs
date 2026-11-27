@@ -1,4 +1,3 @@
-
 using FujitNotes.Application.Articles.Repositories;
 using FujitNotes.Application.Articles.UseCases;
 using FujitNotes.Domain.Articles;
@@ -100,29 +99,29 @@ public class UpdateArticleUseCaseTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_アーカイブ済み記事は編集できない()
+    public async Task ExecuteAsync_非公開記事は編集できる()
     {
         var repository = new FakeArticleRepository();
-
-        var article = new Article(
-            "アーカイブ記事",
-            "本文");
-
+        var article = new Article("非公開記事", "本文");
+        article.Publish();
+        var publishedAt = article.PublishedAt;
         article.Archive();
-
         await repository.AddAsync(article);
-
         var useCase = new UpdateArticleUseCase(repository);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => useCase.ExecuteAsync(
-                article.Id,
-                "変更後タイトル",
-                "変更後本文"));
+        var result = await useCase.ExecuteAsync(
+            article.Id,
+            "変更後タイトル",
+            "変更後本文");
 
+        Assert.True(result);
+        Assert.Equal("変更後タイトル", article.Title.Value);
+        Assert.Equal("変更後本文", article.Content);
         Assert.Equal(ArticleStatus.Archived, article.Status);
-        Assert.Equal(0, repository.UpdateCallCount);
+        Assert.Equal(publishedAt, article.PublishedAt);
+        Assert.Equal(1, repository.UpdateCallCount);
     }
+
 
     private sealed class FakeArticleRepository : IArticleRepository
     {

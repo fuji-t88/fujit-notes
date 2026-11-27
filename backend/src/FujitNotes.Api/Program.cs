@@ -1,15 +1,19 @@
+
+using System.Threading.RateLimiting;
 using FujitNotes.Application.Articles.Repositories;
 using FujitNotes.Application.Articles.UseCases;
 using FujitNotes.Infrastructure.Articles.Repositories;
 using FujitNotes.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllerの登録
+// API controllers
 builder.Services.AddControllers();
 
-// PostgreSQL接続
+// PostgreSQL
 var connectionString =
     builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -22,7 +26,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddDbContext<FujitNotesDbContext>(
     options => options.UseNpgsql(connectionString));
 
-// Repositoryの登録
+// Repository
 builder.Services.AddScoped<
     IArticleRepository,
     EfArticleRepository>();
@@ -39,10 +43,69 @@ builder.Services.AddScoped<ArchiveArticleUseCase>();
 builder.Services.AddScoped<GetPublishedArticlesUseCase>();
 builder.Services.AddScoped<GetPublishedArticleUseCase>();
 
+// Cookie認証
+builder.Services
+    .AddAuthentication(
+        CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "FujitNotes.Admin";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Cookie.Path = "/api";
+
+        options.Cookie.SecurePolicy =
+            builder.Environment.IsDevelopment()
+                ? CookieSecurePolicy.SameAsRequest
+                : CookieSecurePolicy.Always;
+
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = false;
+
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode =
+                StatusCodes.Status401Unauthorized;
+
+            return Task.CompletedTask;
+        };
+
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode =
+                StatusCodes.Status403Forbidden;
+
+            return Task.CompletedTask;
+        };
+    });
+
+// 管理APIの認可
+builder.Services.AddAuthorization();
+
+// ログイン試行回数の制限
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode =
+        StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("admin-login", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey:
+                context.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
+
 var app = builder.Build();
 
-// Step 25：本番環境のAPIアクセス制限
-// Development以外では、公開記事のGETのみを許可する。
+// 本番環境では公開記事GETのみ許可する。
+// 管理者認証の実装とテストが完成するまで解除しない。
 if (!app.Environment.IsDevelopment())
 {
     app.Use(async (context, next) =>
@@ -65,7 +128,15 @@ if (!app.Environment.IsDevelopment())
     });
 }
 
-// 本番環境でも読者向けControllerを利用可能にする
+app.UseRouting();
+
+// エンドポイント別の試行回数制限
+app.UseRateLimiter();
+
+// 認証 → 認可
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

@@ -1,4 +1,3 @@
-
 using FujitNotes.Domain.Articles;
 
 namespace FujitNotes.Domain.Tests.Articles;
@@ -144,17 +143,22 @@ public class ArticleMetadataTests
     }
 
     [Fact]
-    public void ChangeMetadata_ArchivedArticle_Throws()
+    public void ChangeMetadata_PrivateArticle_AllowsChanges()
     {
         var article = new Article("タイトル", "本文");
+        article.Publish();
         article.Archive();
 
-        Assert.Throws<InvalidOperationException>(() =>
-            article.ChangeCategory("Development"));
+        article.ChangeCategory("Development");
+        article.ChangeTags(new[] { "DDD", "C#" });
 
-        Assert.Throws<InvalidOperationException>(() =>
-            article.ChangeTags(new[] { "DDD" }));
+        Assert.Equal("Development", article.Category?.Value);
+        Assert.Equal(
+            new[] { "DDD", "C#" },
+            article.Tags.Select(tag => tag.Value));
+        Assert.Equal(ArticleStatus.Archived, article.Status);
     }
+
 
     [Fact]
     public void ArticleTag_SameValue_HasValueEquality()

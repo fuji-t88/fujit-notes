@@ -1,11 +1,15 @@
 
 using FujitNotes.Application.Articles.UseCases;
 using FujitNotes.Domain.Articles;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FujitNotes.Api.Controllers;
 
+// 記事管理用API
+// 管理者ロールを持つ認証済みユーザーのみ利用可能
 [ApiController]
+[Authorize(Roles = "Admin")]
 [Route("api/articles")]
 public sealed class ArticlesController : ControllerBase
 {
@@ -83,6 +87,7 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // GET /api/articles
+    // 管理者向け記事一覧（下書き・公開済みを含む）
     [HttpGet]
     public async Task<ActionResult<
         IReadOnlyList<ArticleResponse>>> GetAll(
@@ -96,6 +101,7 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // GET /api/articles/{id}
+    // 管理者向け記事詳細
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ArticleResponse>> GetById(
         Guid id,
@@ -174,6 +180,7 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // POST /api/articles/{id}/publish
+    // 記事を公開する
     [HttpPost("{id:guid}/publish")]
     public async Task<IActionResult> Publish(
         Guid id,
@@ -199,6 +206,7 @@ public sealed class ArticlesController : ControllerBase
     }
 
     // POST /api/articles/{id}/archive
+    // 記事をアーカイブする
     [HttpPost("{id:guid}/archive")]
     public async Task<IActionResult> Archive(
         Guid id,

@@ -1,4 +1,3 @@
-
 using FujitNotes.Application.Articles.Repositories;
 using FujitNotes.Application.Articles.UseCases;
 using FujitNotes.Domain.Articles;
@@ -9,29 +8,21 @@ namespace FujitNotes.Application.Tests.Articles;
 public class ArchiveArticleUseCaseTests
 {
     [Fact]
-    public async Task ExecuteAsync_下書きをアーカイブできる()
+    public async Task ExecuteAsync_下書きは非公開化できない()
     {
         var repository = new FakeArticleRepository();
-
-        var article = new Article(
-            "下書き記事",
-            "記事本文");
-
+        var article = new Article("下書き記事", "記事本文");
         await repository.AddAsync(article);
-
         var useCase = new ArchiveArticleUseCase(repository);
 
-        var result = await useCase.ExecuteAsync(article.Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => useCase.ExecuteAsync(article.Id));
 
-        var saved = await repository.GetByIdAsync(article.Id);
-
-        Assert.True(result);
-        Assert.NotNull(saved);
-        Assert.Equal(
-            ArticleStatus.Archived,
-            saved.Status);
-        Assert.Equal(1, repository.UpdateCallCount);
+        Assert.Equal(ArticleStatus.Draft, article.Status);
+        Assert.Null(article.PublishedAt);
+        Assert.Equal(0, repository.UpdateCallCount);
     }
+
 
     [Fact]
     public async Task ExecuteAsync_公開済み記事をアーカイブできる()
@@ -75,53 +66,47 @@ public class ArchiveArticleUseCaseTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_再アーカイブは拒否する()
+    public async Task ExecuteAsync_再度の非公開化は拒否する()
     {
         var repository = new FakeArticleRepository();
-
-        var article = new Article(
-            "アーカイブ済み記事",
-            "記事本文");
-
+        var article = new Article("非公開記事", "記事本文");
+        article.Publish();
         article.Archive();
-
         await repository.AddAsync(article);
-
         var useCase = new ArchiveArticleUseCase(repository);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => useCase.ExecuteAsync(article.Id));
 
-        Assert.Equal(
-            ArticleStatus.Archived,
-            article.Status);
+        Assert.Equal(ArticleStatus.Archived, article.Status);
         Assert.Equal(0, repository.UpdateCallCount);
     }
 
+
     [Fact]
-    public async Task ExecuteAsync_アーカイブしても記事内容は変わらない()
+    public async Task ExecuteAsync_非公開化しても記事内容と公開日時は変わらない()
     {
         var repository = new FakeArticleRepository();
-
-        var article = new Article(
-            "元のタイトル",
-            "元の本文");
-
+        var article = new Article("元のタイトル", "元の本文");
+        article.Publish();
         var originalId = article.Id;
         var originalCreatedAt = article.CreatedAt;
-
+        var publishedAt = article.PublishedAt;
         await repository.AddAsync(article);
-
         var useCase = new ArchiveArticleUseCase(repository);
 
-        await useCase.ExecuteAsync(article.Id);
+        var result = await useCase.ExecuteAsync(article.Id);
 
+        Assert.True(result);
+        Assert.Equal(ArticleStatus.Archived, article.Status);
         Assert.Equal(originalId, article.Id);
         Assert.Equal(originalCreatedAt, article.CreatedAt);
         Assert.Equal("元のタイトル", article.Title.Value);
         Assert.Equal("元の本文", article.Content);
-        Assert.Null(article.PublishedAt);
+        Assert.Equal(publishedAt, article.PublishedAt);
+        Assert.Equal(1, repository.UpdateCallCount);
     }
+
 
     private sealed class FakeArticleRepository : IArticleRepository
     {

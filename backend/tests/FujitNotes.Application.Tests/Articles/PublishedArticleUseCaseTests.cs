@@ -1,4 +1,3 @@
-
 using FujitNotes.Application.Articles.Repositories;
 using FujitNotes.Application.Articles.UseCases;
 using FujitNotes.Domain.Articles;
@@ -19,6 +18,7 @@ public class PublishedArticleUseCaseTests
         published.Publish();
 
         var archived = new Article("保管記事", "保管本文");
+        archived.Publish();
         archived.Archive();
 
         await repository.AddAsync(draft);

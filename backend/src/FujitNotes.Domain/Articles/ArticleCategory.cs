@@ -1,4 +1,5 @@
 
+
 namespace FujitNotes.Domain.Articles;
 
 public sealed record ArticleCategory
